@@ -1,10 +1,14 @@
 
 import argparse
 import os
+import shutil
+import subprocess
+import tempfile
+import textwrap
+
 import pygments
 import pygments.lexers
 import pygments.formatters
-import textwrap
 
 
 def findSourceFiles(path, extensions):
@@ -65,7 +69,7 @@ def makePostScript(sourceFiles, args):
     return postscriptFiles
 
 
-def makeLaTeXFile(path, formatter):
+def makeLaTeXFile(path, formatter, title):
     """
     makeLateXFile will create open a file and write the appropriate LaTeX header
     information to it. It returns the file object
@@ -77,9 +81,9 @@ def makeLaTeXFile(path, formatter):
     # Create the LaTeX header
     latexFile.write(textwrap.dedent(
         """
-        \\documentclass{scrartcl}
+        \\documentclass[11pt]{scrartcl}
         \\usepackage{fancyvrb}
-        \\usepackage{xcolor}
+        \\usepackage[dvipsnames]{xcolor}
 
         \\usepackage{hyperref}
         \\hypersetup{
@@ -92,6 +96,8 @@ def makeLaTeXFile(path, formatter):
             frenchlinks=true,
             bookmarks=true,
         }
+
+        \title{{{title}}}
         """
     ))
 
@@ -101,6 +107,7 @@ def makeLaTeXFile(path, formatter):
         """
 
         \\begin{document}
+        \\tableofcontents
         """
     ))
     return latexFile
@@ -121,40 +128,25 @@ def finishLaTeXFile(latexFile):
     latexFile.close()
 
 
-if __name__ == "__main__":
-    print("I'm converting Fortran into a PDF\n")
+def makeLaTeX(sourceFiles, title):
+    """
+    makeLaTeX will create a LaTeX file that contains all the code found. The
+    file is a random, temporary file. The path to the LaTeX file is returned
 
-    parser = argparse.ArgumentParser(description="Convert Fortran to PDF")
-    parser.add_argument('path')
-    parser.add_argument('--language', default="fortran",
-                        help="Coding language defines preset file extensions")
-    parser.add_argument("-n", "--line-numbering", default=False,
-                        action="store_true",
-                        help="Make PDF have line numbers")
-    parser.add_argument("--landscape", default=False, action="store_true",
-                        help="Make PDF in landscape mode")
-
-    args = parser.parse_args()
-
-    extensions = []
-    if args.language == "fortran":
-        print("Looking for fortran code")
-        extensions = [".f", ".f90"]
-    else:
-        raise NameError(
-            "I don't know how to deal with {} code".format(args.language))
-
-    sourceFiles = findSourceFiles(args.path, extensions)
-#   psFiles = makePostScript(sourceFiles, args)
-
+    `sourceFiles`: A list of absolute paths to files containing source code.
+    """
+    print("Making a LaTeX file from the source code")
     latexOptions = {"full": False,
                     "linenos": True,
-                    "texcomments": True,
+                    "texcomments": False,
                     "excapeinside": True,
                     }
     formatter = pygments.formatters.get_formatter_by_name(
         "latex", **latexOptions)
-    texFile = makeLaTeXFile("Code.tex", formatter)
+
+    tmpDir = tempfile.mkdtemp()
+    texFilename = os.path.join(tmpDir, "Code.tex")
+    texFile = makeLaTeXFile(texFilename, formatter, title)
 
     for F in sourceFiles:
         print(F)
@@ -169,3 +161,66 @@ if __name__ == "__main__":
             pygments.highlight(code, lexer, formatter, outfile=texFile)
 
     finishLaTeXFile(texFile)
+
+    return texFilename
+
+
+if __name__ == "__main__":
+    print("I'm converting Fortran into a PDF\n")
+
+    parser = argparse.ArgumentParser(description="Convert Fortran to PDF")
+    parser.add_argument('path', help="Where to search for the code")
+    parser.add_argument('pdf_name', help="Path to resulting PDF.")
+    parser.add_argument("--name", default=None,
+                        help="Name of the code")
+    parser.add_argument('--language', default="fortran",
+                        help="Coding language defines preset file extensions")
+    parser.add_argument("-n", "--line-numbering", default=False,
+                        action="store_true",
+                        help="Make PDF have line numbers")
+    parser.add_argument("--landscape", default=False, action="store_true",
+                        help="Make PDF in landscape mode")
+
+    args = parser.parse_args()
+
+    # Assume a name if one wasn't specified
+    if args.name == None:
+        par, name = os.path.split(args.path)
+        args.name = name
+
+    extensions = []
+    if args.language == "fortran":
+        print("Looking for fortran code")
+        extensions = [".f", ".f90"]
+    elif args.language == "python":
+        extensions = [".py"]
+    elif args.language == "c++":
+        extensions = [".c", ".h", ".cpp", ".hpp"]
+    else:
+        raise NameError(
+            "I don't know how to deal with {} code".format(args.language))
+
+    sourceFiles = findSourceFiles(args.path, extensions)
+    texFilename = makeLaTeX(sourceFiles, title=args.name)
+
+    texPath = texFilename
+    pdfPath = os.path.abspath(args.pdf_name)
+
+    texDir, texFilename = os.path.split(texPath)
+    texName, texExtension = texFilename.split('.')
+    pdfDir = os.path.split(pdfPath)[0]
+
+    curDir = os.getcwd()
+    # Compile LaTeX
+    print(texPath)
+    os.chdir(texDir)
+    proc = subprocess.Popen(['latexmk', texPath, '-pdf',
+                             '-outdir={}'.format(pdfDir)])
+    proc.communicate()
+
+    # Copy the PDF if the compilation worked
+    if not proc.returncode:
+        shutil.move("{}.pdf".format(os.path.join(texDir, texName)), pdfPath)
+#       shutil.rmtree(texPath)
+
+    os.chdir(curDir)
