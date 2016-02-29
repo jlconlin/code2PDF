@@ -215,9 +215,9 @@ def _setup_page_id_to_num(pdf, pages=None, _result=None, _num_pages=None):
     return _result
 
 
-def findSubroutines(regex):
+def findRoutines(regex):
     """
-    findSubroutines will return a list of tuples containing the name of a
+    findRoutines will return a list of tuples containing the name of a
     subroutine and the page number on which that subroutine is found.
 
     `regex`: regular expression describing the method for finding the
@@ -292,17 +292,21 @@ if __name__ == "__main__":
         (subroutine|function)\s+        # Indication of subroutine/function
         (?P<name>\w+)                   # Name of subroutine/function
         """, re.MULTILINE|re.VERBOSE)
-#   subroutines = findSubroutines(subroutine_re)
+#   routines = findRoutines(subroutine_re)
 
     outPDF = PyPDF2.PdfFileWriter()
     outPDF.appendPagesFromReader(PDF)
 
-    for BM in bookmarks:
+    r = 0
+    for BM in reversed(bookmarks):
         page_number = bookmark_map[BM.page.idnum]
-        outPDF.addBookmark(BM["/Title"], page_number+1, parent=None)
+        newBM = outPDF.addBookmark(BM["/Title"], page_number+1, parent=None)
 
+        # Iterate over all the found routines
+        for r in routines:
+            print(r)
+            if r[1] >= page_number:
+                outPDF.addBookmark(r[0], r[1], parent=newBM)
 
-
-
-
-    outPDF.write(open("{}bookmarked.pdf".format(args.name), 'wb'))
+    outPDFFile = open("{}bookmarked.pdf".format(args.name), 'wb')
+    outPDF.write(outPDFFile)
