@@ -1,10 +1,11 @@
 
 import argparse
 import os
-import shutil
+import re
 import subprocess
 import textwrap
 
+import PyPDF2
 import pygments
 import pygments.lexers
 import pygments.formatters
@@ -178,6 +179,64 @@ def makeLaTeX(sourceFiles, title, author, landscape):
     return texFilename
 
 
+def compileLaTeX(texPath):
+    """
+    compileLaTeX will compile the LaTeX document. It returns the absolute path
+    to the generated PDF.
+
+    `texPath`: Absoulate path to LaTeX file.
+    """
+    # Compile LaTeX
+    proc = subprocess.Popen(['latexmk', texPath, '-pdf'])
+    proc.communicate()
+
+    name, ext = os.path.splitext(texPath)
+
+    return name+".pdf"
+
+
+def _setup_page_id_to_num(pdf, pages=None, _result=None, _num_pages=None):
+    """
+    Create a map of page IDs to numerical page numbers. Stolen from
+        http://stackoverflow.com/questions/8329748/how-to-get-bookmarks-page-number
+    """
+    if _result is None:
+        _result = {}
+    if pages is None:
+        _num_pages = []
+        pages = pdf.trailer["/Root"].getObject()["/Pages"].getObject()
+    t = pages["/Type"]
+    if t == "/Pages":
+        for page in pages["/Kids"]:
+            _result[page.idnum] = len(_num_pages)
+            _setup_page_id_to_num(pdf, page.getObject(), _result, _num_pages)
+    elif t == "/Page":
+        _num_pages.append(1)
+    return _result
+
+
+def findSubroutines(regex):
+    """
+    findSubroutines will return a list of tuples containing the name of a
+    subroutine and the page number on which that subroutine is found.
+
+    `regex`: regular expression describing the method for finding the
+        subroutine. This must use named capture groups with one group called
+        'name' indicating the name of the subroutine.
+    """
+    print("Searching PDF for subroutines")
+    for pageNum in range(PDF.getNumPages()):
+        content = PDF.getPage(pageNum).extractText()
+        found = regex.finditer(content)
+        for sub_r in found:
+            print("I found a {}: {} on page {}".format(
+                sub_r.group(1), sub_r.groupdict()['name'], pageNum+1))
+
+            subroutines.append((sub_r.groupdict()['name'], pageNum))
+
+    return subroutines
+
+
 if __name__ == "__main__":
     print("I'm converting Fortran into a PDF\n")
 
@@ -201,27 +260,49 @@ if __name__ == "__main__":
     if args.language.lower() == "fortran":
         print("Looking for fortran code")
         extensions = [".f", ".f90"]
-    elif args.language.lower() == "python":
-        extensions = [".py"]
-    elif args.language.lower() == "c++":
-        extensions = [".c", ".h", ".cpp", ".hpp"]
     else:
         raise NameError(
             "I don't know how to deal with {} code".format(args.language))
 
-    sourceFiles = findSourceFiles(args.path, extensions)
-    texFilename = makeLaTeX(sourceFiles[:3],
-                            title=args.name,
-                            author=args.author,
-                            landscape=args.landscape
-                            )
+#   sourceFiles = findSourceFiles(args.path, extensions)
+#   texFilename = makeLaTeX(sourceFiles[:3],
+#                           title=args.name,
+#                           author=args.author,
+#                           landscape=args.landscape
+#                           )
+#   PDFfile = compileLaTeX(texFilename)
 
-    texPath = texFilename
+    PDF = PyPDF2.PdfFileReader(PDFfile)
+    bookmarks = PDF.getOutlines()
+    bookmark_map = _setup_page_id_to_num(PDF)
 
-    texDir, texFilename = os.path.split(texPath)
-    texName, texExtension = texFilename.split('.')
+    BMs = [(B, bookmark_map[B.page.idnum]) for B in bookmarks]
 
-    # Compile LaTeX
-    proc = subprocess.Popen(['latexmk', texPath, '-pdf'])
-    proc.communicate()
+    # Get page numbers for bookmarks
+#   for i in range(len(bookmarks)):
+#       print()
+#       print("Bookmark #: {}".format(i))
+#       print("Bookmark  : {}".format(bookmarks[i]))
+#       print("BookmarkID: {}".format(bookmarks[i].page.idnum))
+#       print("BookmarkPg: {}".format(bookmark_map[bookmarks[i].page.idnum]))
 
+    subroutine_re = re.compile(
+        """
+        (?<!end\s)                      # Don't match the end of subroutine/func
+        (subroutine|function)\s+        # Indication of subroutine/function
+        (?P<name>\w+)                   # Name of subroutine/function
+        """, re.MULTILINE|re.VERBOSE)
+#   subroutines = findSubroutines(subroutine_re)
+
+    outPDF = PyPDF2.PdfFileWriter()
+    outPDF.appendPagesFromReader(PDF)
+
+    for BM in bookmarks:
+        page_number = bookmark_map[BM.page.idnum]
+        outPDF.addBookmark(BM["/Title"], page_number+1, parent=None)
+
+
+
+
+
+    outPDF.write(open("{}bookmarked.pdf".format(args.name), 'wb'))
