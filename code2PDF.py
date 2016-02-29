@@ -225,6 +225,7 @@ def findRoutines(regex):
         'name' indicating the name of the subroutine.
     """
     print("Searching PDF for subroutines")
+    routines = []
     for pageNum in range(PDF.getNumPages()):
         content = PDF.getPage(pageNum).extractText()
         found = regex.finditer(content)
@@ -232,9 +233,9 @@ def findRoutines(regex):
             print("I found a {}: {} on page {}".format(
                 sub_r.group(1), sub_r.groupdict()['name'], pageNum+1))
 
-            subroutines.append((sub_r.groupdict()['name'], pageNum))
+            routines.append((sub_r.groupdict()['name'], pageNum))
 
-    return subroutines
+    return routines
 
 
 if __name__ == "__main__":
@@ -264,13 +265,13 @@ if __name__ == "__main__":
         raise NameError(
             "I don't know how to deal with {} code".format(args.language))
 
-#   sourceFiles = findSourceFiles(args.path, extensions)
-#   texFilename = makeLaTeX(sourceFiles[:3],
-#                           title=args.name,
-#                           author=args.author,
-#                           landscape=args.landscape
-#                           )
-#   PDFfile = compileLaTeX(texFilename)
+    sourceFiles = findSourceFiles(args.path, extensions)
+    texFilename = makeLaTeX(sourceFiles[:3],
+                            title=args.name,
+                            author=args.author,
+                            landscape=args.landscape
+                            )
+    PDFfile = compileLaTeX(texFilename)
 
     PDF = PyPDF2.PdfFileReader(PDFfile)
     bookmarks = PDF.getOutlines()
@@ -278,26 +279,17 @@ if __name__ == "__main__":
 
     BMs = [(B, bookmark_map[B.page.idnum]) for B in bookmarks]
 
-    # Get page numbers for bookmarks
-#   for i in range(len(bookmarks)):
-#       print()
-#       print("Bookmark #: {}".format(i))
-#       print("Bookmark  : {}".format(bookmarks[i]))
-#       print("BookmarkID: {}".format(bookmarks[i].page.idnum))
-#       print("BookmarkPg: {}".format(bookmark_map[bookmarks[i].page.idnum]))
-
     subroutine_re = re.compile(
         """
         (?<!end\s)                      # Don't match the end of subroutine/func
         (subroutine|function)\s+        # Indication of subroutine/function
         (?P<name>\w+)                   # Name of subroutine/function
         """, re.MULTILINE|re.VERBOSE)
-#   routines = findRoutines(subroutine_re)
+    routines = findRoutines(subroutine_re)
 
     outPDF = PyPDF2.PdfFileWriter()
     outPDF.appendPagesFromReader(PDF)
 
-    r = 0
     for BM in reversed(bookmarks):
         page_number = bookmark_map[BM.page.idnum]
         newBM = outPDF.addBookmark(BM["/Title"], page_number+1, parent=None)
@@ -308,5 +300,6 @@ if __name__ == "__main__":
             if r[1] >= page_number:
                 outPDF.addBookmark(r[0], r[1], parent=newBM)
 
-    outPDFFile = open("{}bookmarked.pdf".format(args.name), 'wb')
-    outPDF.write(outPDFFile)
+    outPDFStream = open("{}bookmarked.pdf".format(args.name), 'wb')
+    outPDF.write(outPDFStream)
+    outPDFStream.close()
