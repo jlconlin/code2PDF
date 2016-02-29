@@ -96,7 +96,7 @@ def finishLaTeXFile(latexFile):
     latexFile.close()
 
 
-def makeLaTeX(sourceFiles, title, author, landscape):
+def makeLaTeX(sourceFiles, title, author, landscape, lineNumbering):
     """
     makeLaTeX will create a LaTeX file that contains all the code found. The
     file is a random, temporary file. The path to the LaTeX file is returned
@@ -108,7 +108,7 @@ def makeLaTeX(sourceFiles, title, author, landscape):
     """
     print("Making a LaTeX file from the source code")
     latexOptions = {"full": False,
-                    "linenos": True,
+                    "linenos": lineNumbering,
                     "texcomments": False,
                     "excapeinside": True,
                     }
@@ -128,7 +128,9 @@ def makeLaTeX(sourceFiles, title, author, landscape):
         lexer = pygments.lexers.get_lexer_for_filename(F)
 
         texFile.write("\\pagebreak\n")
-        texFile.write("\\section{{{}}}\n".format(os.path.basename(F)))
+        filename = os.path.basename(F)
+        filename = filename.replace("_", "\_")
+        texFile.write("\\section{{{}}}\n".format(filename))
         with open(F) as codeFile:
             code = codeFile.read()
             pygments.highlight(code, lexer, formatter, outfile=texFile)
@@ -220,7 +222,7 @@ def addRoutineBookmarks(bookmarks, routines, outPDF):
                 if (r[1] < pn_next):
                     outPDF.addBookmark(r[0], r[1], parent=newBM)
                 else:
-                    break;
+                    break
 
 
 if __name__ == "__main__":
@@ -254,7 +256,8 @@ if __name__ == "__main__":
     texFilename = makeLaTeX(sourceFiles,
                             title=args.name,
                             author=args.author,
-                            landscape=args.landscape
+                            landscape=args.landscape,
+                            lineNumbering=args.line_numbering
                             )
     PDFfile = compileLaTeX(texFilename)
 
@@ -269,7 +272,7 @@ if __name__ == "__main__":
         (?<!end\s)                      # Don't match the end of subroutine/func
         (subroutine|function)\s+        # Indication of subroutine/function
         (?P<name>\w+)                   # Name of subroutine/function
-        """, re.MULTILINE|re.VERBOSE)
+        """, re.MULTILINE | re.VERBOSE)
     routines = findRoutines(subroutine_re)
 
     outPDF = PyPDF2.PdfFileWriter()
