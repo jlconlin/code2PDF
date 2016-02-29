@@ -132,9 +132,15 @@ def makeLaTeX(sourceFiles, title, author, landscape, lineNumbering):
         filename = os.path.basename(F)
         filename = filename.replace("_", "\_")
         texFile.write("\\section{{{}}}\n".format(filename))
-        with open(F) as codeFile:
-            code = codeFile.read()
-            pygments.highlight(code, lexer, formatter, outfile=texFile)
+        try:
+            with open(F, 'rt', encoding="latin-1") as codeFile:
+                code = codeFile.read()
+                pygments.highlight(code, lexer, formatter, outfile=texFile)
+        except UnicodeDecodeError:
+            with open(F, 'rt', encoding="utf-8") as codeFile:
+                code = codeFile.read()
+                pygments.highlight(code, lexer, formatter, outfile=texFile)
+
 
     finishLaTeXFile(texFile)
 
