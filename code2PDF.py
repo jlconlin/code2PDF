@@ -22,9 +22,10 @@ def findSourceFiles(path, extensions):
     for root, dirs, files in os.walk(path):
         for F in files:
             for ext in extensions:
-                if F.endswith(ext):
+                if F.lower().endswith(ext):
                     sourceFiles.append(os.path.join(path, root, F))
 
+    print("Found {} source code files".format(len(sourceFiles)))
     return sourceFiles
 
 
