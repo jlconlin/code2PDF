@@ -211,6 +211,7 @@ def addRoutineBookmarks(bookmarks, routines, outPDF):
     `routines`: List of tuples containing routine names and PDF page numbers
     `outPDF`: The new PDF file being created
     """
+    print("Adding bookmark for each routine.")
     for i in range(len(bookmarks)):
         BM = bookmarks[i]
         pn_current = bookmark_map[BM.page.idnum]
@@ -287,6 +288,8 @@ if __name__ == "__main__":
     addRoutineBookmarks(bookmarks, routines, outPDF)
 
     # Write new PDF file
+    print("Opening new PDF file")
     outPDFStream = open("{}.pdf".format(args.name), 'wb')
+    print("Writing new PDF file")
     outPDF.write(outPDFStream)
     outPDFStream.close()
