@@ -131,7 +131,7 @@ def makeLaTeX(sourceFiles, title, author, landscape, lineNumbering):
         texFile.write("\\pagebreak\n")
         filename = os.path.basename(F)
         filename = filename.replace("_", "\_")
-        texFile.write("\\section{{\\textt{{ {} }} }}\n".format(filename))
+        texFile.write("\\section{{\\texttt{{ {} }} }}\n".format(filename))
         try:
             with open(F, 'rt', encoding="latin-1") as codeFile:
                 code = codeFile.read()
@@ -195,6 +195,7 @@ def findRoutines(regex):
     routines = []
     for pageNum in range(PDF.getNumPages()):
         content = PDF.getPage(pageNum).extractText()
+        content = content.replace("\n", " ")
         found = regex.finditer(content)
         for sub_r in found:
             routines.append((sub_r.groupdict()['name'], pageNum))
@@ -255,18 +256,34 @@ if __name__ == "__main__":
     if args.language.lower() == "fortran":
         print("Looking for fortran code")
         extensions = [".f", ".f90"]
+        subroutine_re = re.compile(
+            """
+            (?<!end\s)                      # Don't match the end of routines
+            (subroutine|function)\s+        # Indication of subroutine/function
+            (?P<name>\w+)                   # Name of subroutine/function
+            """, re.MULTILINE | re.VERBOSE)
+    elif args.language.lower() == "python":
+        print("Looking for fortran code")
+        extensions = [".py"]
+        subroutine_re = re.compile(
+            """
+            (class|def)\s+          # Find classes and functions
+            (?P<name>\w+)\s*        # Name of class/function
+            \(                      # Beginning of class/function arguments
+            """, re.MULTILINE | re.VERBOSE | re.DOTALL)
     else:
         raise NameError(
             "I don't know how to deal with {} code".format(args.language))
 
-    sourceFiles = findSourceFiles(args.path, extensions)
-    texFilename = makeLaTeX(sourceFiles,
-                            title=args.name,
-                            author=args.author,
-                            landscape=args.landscape,
-                            lineNumbering=args.line_numbering
-                            )
-    PDFfile = compileLaTeX(texFilename)
+#   sourceFiles = findSourceFiles(args.path, extensions)
+#   texFilename = makeLaTeX(sourceFiles,
+#                           title=args.name,
+#                           author=args.author,
+#                           landscape=args.landscape,
+#                           lineNumbering=args.line_numbering
+#                           )
+#   PDFfile = compileLaTeX(texFilename)
+    PDFfile = "NJOY2012.pdf"
 
     PDF = PyPDF2.PdfFileReader(PDFfile)
     bookmarks = PDF.getOutlines()
@@ -274,12 +291,6 @@ if __name__ == "__main__":
 
     BMs = [(B, bookmark_map[B.page.idnum]) for B in bookmarks]
 
-    subroutine_re = re.compile(
-        """
-        (?<!end\s)                      # Don't match the end of subroutine/func
-        (subroutine|function)\s+        # Indication of subroutine/function
-        (?P<name>\w+)                   # Name of subroutine/function
-        """, re.MULTILINE | re.VERBOSE)
     routines = findRoutines(subroutine_re)
 
     outPDF = PyPDF2.PdfFileWriter()
