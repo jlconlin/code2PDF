@@ -131,7 +131,7 @@ def makeLaTeX(sourceFiles, title, author, landscape, lineNumbering):
         texFile.write("\\pagebreak\n")
         filename = os.path.basename(F)
         filename = filename.replace("_", "\_")
-        texFile.write("\\section{{{}}}\n".format(filename))
+        texFile.write("\\section{{\\textt{{ {} }} }}\n".format(filename))
         try:
             with open(F, 'rt', encoding="latin-1") as codeFile:
                 code = codeFile.read()
@@ -140,7 +140,6 @@ def makeLaTeX(sourceFiles, title, author, landscape, lineNumbering):
             with open(F, 'rt', encoding="utf-8") as codeFile:
                 code = codeFile.read()
                 pygments.highlight(code, lexer, formatter, outfile=texFile)
-
 
     finishLaTeXFile(texFile)
 
