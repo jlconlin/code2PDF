@@ -275,14 +275,14 @@ if __name__ == "__main__":
         raise NameError(
             "I don't know how to deal with {} code".format(args.language))
 
-#   sourceFiles = findSourceFiles(args.path, extensions)
-#   texFilename = makeLaTeX(sourceFiles,
-#                           title=args.name,
-#                           author=args.author,
-#                           landscape=args.landscape,
-#                           lineNumbering=args.line_numbering
-#                           )
-#   PDFfile = compileLaTeX(texFilename)
+    sourceFiles = findSourceFiles(args.path, extensions)
+    texFilename = makeLaTeX(sourceFiles,
+                            title=args.name,
+                            author=args.author,
+                            landscape=args.landscape,
+                            lineNumbering=args.line_numbering
+                            )
+    PDFfile = compileLaTeX(texFilename)
     PDFfile = "NJOY2012.pdf"
 
     PDF = PyPDF2.PdfFileReader(PDFfile)
