@@ -132,6 +132,7 @@ def makeLaTeX(sourceFiles, title, author, landscape, lineNumbering):
         filename = os.path.basename(F)
         filename = filename.replace("_", "\_")
         texFile.write("\\section{{\\texttt{{ {} }} }}\n".format(filename))
+        texFile.write("\\url{{ {} }}\n".format(F))
         try:
             with open(F, 'rt', encoding="latin-1") as codeFile:
                 code = codeFile.read()
