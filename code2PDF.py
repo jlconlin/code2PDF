@@ -271,6 +271,14 @@ if __name__ == "__main__":
             (?P<name>\w+)\s*        # Name of class/function
             \(                      # Beginning of class/function arguments
             """, re.MULTILINE | re.VERBOSE | re.DOTALL)
+    elif (args.language.lower() == "cpp") or (args.language.lower() == "c++"):
+        print("Looking for c++ code")
+        extensions = [".cpp", ".hpp"]
+        subroutine_re = re.compile(
+            """
+            (class|struct)\s+       # Find classes and structs
+            (?P<name>\w+)\s*        # Name of class/struct
+            """, re.MULTILINE | re.VERBOSE | re.DOTALL)
     else:
         raise NameError(
             "I don't know how to deal with {} code".format(args.language))
@@ -283,7 +291,7 @@ if __name__ == "__main__":
                             lineNumbering=args.line_numbering
                             )
     PDFfile = compileLaTeX(texFilename)
-    PDFfile = "NJOY2012.pdf"
+    PDFfile = "{}.pdf".format(args.name)
 
     PDF = PyPDF2.PdfFileReader(PDFfile)
     bookmarks = PDF.getOutlines()
